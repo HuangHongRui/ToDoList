@@ -92,7 +92,7 @@ var testObject = new TestObject();
 testObject.save({
   words: 'Hello World!'
 }).then(function (object) {
-  alert('LeanCloud Rocks!');
+  // alert('LeanCloud Rocks!');
 });
 
 new _vue2.default({
@@ -113,16 +113,38 @@ new _vue2.default({
 
     window.onbeforeunload = function () {
       var dataString = JSON.stringify(_this.todoList);
-      window.localStorage.setItem('myTodos', dataString); // 看文档https://developer.mozilla.org/zh-CN/docs/Web/API/Window/localStorage
+      var AVTodos = _leancloudStorage2.default.Object.extend('AllTodos');
+      var avTodos = new AVTodos();
+      avTodos.set('content', dataString);
+      avTodos.save().then(function (todo) {
+        // 成功保存之后，执行其他逻辑.
+        console.log('保存成功');
+      }, function (error) {
+        // 异常处理
+        console.error('保存失败');
+      });
     };
-    var oldDataString = window.localStorage.getItem('myTodos');
-    var oldData = JSON.parse(oldDataString);
-    this.todoList = oldData || [];
+    // let oldDataString = window.localStorage.getItem('myTodos')
+    // let oldData = JSON.parse(oldDataString)
+    // this.todoList = oldData || []
 
     this.currentUser = this.getCurrentUser();
   },
 
   methods: {
+
+    saveTodos: function saveTodos() {
+      var dataString = JSON.stringify(this.todoList);
+      var AVTodos = _leancloudStorage2.default.Object.extend('AllTodos');
+      var avTodos = new AVTodos();
+      avTodos.set('content', dataString);
+      avTodos.save().then(function (todo) {
+        alert('保存成功');
+      }, function (error) {
+        alert('保存失败');
+      });
+    },
+
     addTodo: function addTodo() {
       this.todoList.push({
         title: this.newTodo,
@@ -130,10 +152,13 @@ new _vue2.default({
         done: false
       });
       this.newTodo = '';
+      this.saveTodos();
     },
+
     removeTodo: function removeTodo(todo) {
       var index = this.todoList.indexOf(todo);
       this.todoList.splice(index, 1);
+      this.saveTodos();
     },
 
     signUp: function signUp() {
