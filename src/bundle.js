@@ -87,14 +87,6 @@ _leancloudStorage2.default.init({
   appKey: APP_KEY
 });
 
-var TestObject = _leancloudStorage2.default.Object.extend('TestObject');
-var testObject = new TestObject();
-testObject.save({
-  words: 'Hello World!'
-}).then(function (object) {
-  // alert('LeanCloud Rocks!');
-});
-
 new _vue2.default({
   el: '#app',
   data: {
@@ -109,42 +101,66 @@ new _vue2.default({
 
   },
   created: function created() {
-    var _this = this;
-
-    window.onbeforeunload = function () {
-      var dataString = JSON.stringify(_this.todoList);
-      var AVTodos = _leancloudStorage2.default.Object.extend('AllTodos');
-      var avTodos = new AVTodos();
-      avTodos.set('content', dataString);
-      avTodos.save().then(function (todo) {
-        // 成功保存之后，执行其他逻辑.
-        console.log('保存成功');
-      }, function (error) {
-        // 异常处理
-        console.error('保存失败');
-      });
-    };
-    // let oldDataString = window.localStorage.getItem('myTodos')
-    // let oldData = JSON.parse(oldDataString)
-    // this.todoList = oldData || []
 
     this.currentUser = this.getCurrentUser();
+    this.wahaha();
   },
 
   methods: {
 
+    wahaha: function wahaha() {
+      var _this = this;
+
+      if (this.currentUser) {
+        var query = new _leancloudStorage2.default.Query('AllTodos');
+        query.find().then(function (todos) {
+          var avAllTodos = todos[0]; // 因为理论上 AllTodos 只有一个，所以我们取结果的第一项
+          var id = avAllTodos.id;
+          _this.todoList = JSON.parse(avAllTodos.attributes.content); // 为什么有个 attributes？因为我从控制台看到的
+          _this.todoList.id = id; // 为什么给 todoList 这个数组设置 id？因为数组也是对象啊
+        }, function (error) {
+          console.error(error);
+        });
+      }
+    },
+
+    updateTodos: function updateTodos() {
+
+      var dataString = JSON.stringify(this.todoList);
+      var avTodos = _leancloudStorage2.default.Object.createWithoutData('AllTodos', this.todoList.id);
+      avTodos.set('content', dataString);
+      avTodos.save().then(function () {
+        console.log('更新成功');
+      });
+    },
+
     saveTodos: function saveTodos() {
+      var _this2 = this;
+
       var dataString = JSON.stringify(this.todoList);
       var AVTodos = _leancloudStorage2.default.Object.extend('AllTodos');
       var avTodos = new AVTodos();
+
+      var acl = new _leancloudStorage2.default.ACL();
+      acl.setReadAccess(_leancloudStorage2.default.User.current(), true);
+      acl.setWriteAccess(_leancloudStorage2.default.User.current(), true);
+
       avTodos.set('content', dataString);
+      avTodos.setACL(acl);
       avTodos.save().then(function (todo) {
-        alert('保存成功');
+        _this2.todoList.id = todo.id;
+        console.log('保存成功');
       }, function (error) {
         alert('保存失败');
       });
     },
-
+    saveOrUpdateTodos: function saveOrUpdateTodos() {
+      if (this.todoList.id) {
+        this.updateTodos();
+      } else {
+        this.saveTodos();
+      }
+    },
     addTodo: function addTodo() {
       this.todoList.push({
         title: this.newTodo,
@@ -152,35 +168,38 @@ new _vue2.default({
         done: false
       });
       this.newTodo = '';
-      this.saveTodos();
+      this.saveOrUpdateTodos();
     },
 
     removeTodo: function removeTodo(todo) {
       var index = this.todoList.indexOf(todo);
       this.todoList.splice(index, 1);
-      this.saveTodos();
+      this.saveOrUpdateTodos();
     },
 
     signUp: function signUp() {
-      var _this2 = this;
+      var _this3 = this;
 
       var user = new _leancloudStorage2.default.User();
       user.setUsername(this.formData.username);
       user.setPassword(this.formData.password);
       user.signUp().then(function (loginedUser) {
-        _this2.currentUser = _this2.getCurrentUser();
+        _this3.currentUser = _this3.getCurrentUser();
       }, function (error) {
         alert('注册失败');
+        console.log(error);
       });
     },
 
     login: function login() {
-      var _this3 = this;
+      var _this4 = this;
 
       _leancloudStorage2.default.User.logIn(this.formData.username, this.formData.password).then(function (loginedUser) {
-        _this3.currentUser = _this3.getCurrentUser();
+        _this4.currentUser = _this4.getCurrentUser();
+        _this4.wahaha();
       }, function (error) {
         alert('登录失败');
+        console.log(error);
       });
     },
 
